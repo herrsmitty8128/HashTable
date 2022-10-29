@@ -124,7 +124,7 @@ static inline uint64_t find_prev_index(map_t *map, const uint64_t key, const uin
 }
 
 static void swap(uint64_t *key, element_t *value, map_bucket_t *bucket){
-    
+
     element_t temp;
     
     temp.u64 = *key;
@@ -136,7 +136,7 @@ static void swap(uint64_t *key, element_t *value, map_bucket_t *bucket){
     bucket->value = temp;
 }
 
-static inline bool map_emplace(map_t *map, uint64_t key, element_t value){
+static bool map_emplace(map_t *map, uint64_t key, element_t value){
 
     uint64_t h = hash((hashtable_t*)map, key);
     map_bucket_t *bucket = &map->buckets[h];
@@ -149,7 +149,8 @@ static inline bool map_emplace(map_t *map, uint64_t key, element_t value){
         map->hashtable.count++;
         return true;
     }
-    else if(meta & HEAD_BIT_MASK){
+
+    if(meta & HEAD_BIT_MASK){
         meta ^= HEAD_BIT_MASK;
         for(;;){
             if(bucket->key == key){
@@ -206,8 +207,7 @@ static bool map_resize(map_t **fmap, bool action){
 }
 
 bool map_put(map_t **fmap, uint64_t key, element_t value){
-    map_t *map = *fmap;
-    if(hashtable_should_grow((hashtable_t*)map)){
+    if(hashtable_should_grow((hashtable_t*)*fmap)){
         map_resize(fmap, true);
     }
     return map_emplace(*fmap, key, value);
