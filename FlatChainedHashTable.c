@@ -113,11 +113,10 @@ static inline bool emplace_empty(map_t *map, const uint64_t h, uint64_t *prev_me
     return false;
 }
 
-static uint64_t find_prev_index(map_t *map, const uint64_t key, uint64_t h){
+static inline uint64_t find_prev_index(map_t *map, const uint64_t key, const uint64_t h){
     uint64_t i = hash((hashtable_t*)map, key);
     for(;;){
-        uint64_t *pmeta = &map->buckets[i].meta;
-        uint64_t next = *pmeta & PROBE_BITS_MASK;
+        uint64_t next = map->buckets[i].meta & PROBE_BITS_MASK;
         if(next == h) return i;
         i = next;
     }
@@ -150,12 +149,12 @@ static inline bool map_emplace(map_t *map, uint64_t key, element_t value){
         return true;
     }
     else if(meta & HEAD_BIT_MASK){
+        meta ^= HEAD_BIT_MASK; // faster than meta &= PROBE_BITS_MASK;
         for(;;){
             if(bucket->key == key){
                 bucket->value = value;
                 return true;
             }
-            meta &= PROBE_BITS_MASK;
             if(meta == NO_MORE_PROBES) break;
             h = meta;
             bucket = &map->buckets[h];
@@ -167,11 +166,8 @@ static inline bool map_emplace(map_t *map, uint64_t key, element_t value){
         swap(&key, &value, bucket);
         h = find_prev_index(map, key, h);
         bucket = &map->buckets[h];
-        meta = (bucket->meta & HEAD_BIT_MASK) | (meta & PROBE_BITS_MASK);
-        bucket->meta = meta;
-        for(;;){
-            meta &= PROBE_BITS_MASK;
-            if(meta == NO_MORE_PROBES) break;
+        bucket->meta = (bucket->meta & HEAD_BIT_MASK) | meta;
+        while(meta != NO_MORE_PROBES){
             h = meta;
             bucket = &map->buckets[h];
             meta = bucket->meta;            
