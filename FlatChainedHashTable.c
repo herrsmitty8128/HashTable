@@ -80,7 +80,6 @@ element_t *map_get(map_t *map, const uint64_t key) {
     uint64_t meta = bucket->meta;
 
     if(meta & HEAD_BIT_MASK){
-        //meta ^= HEAD_BIT_MASK;
         for(;;){
             if(bucket->key == key) return &bucket->value;
             meta &= PROBE_BITS_MASK;
