@@ -222,9 +222,7 @@ void map_del(map_t **fmap, uint64_t key) {
     if(meta & HEAD_BIT_MASK){
         meta ^= HEAD_BIT_MASK;
         for(;;){
-            if(last->key == key){
-                erase = last;
-            }
+            if(last->key == key) erase = last;
             if(meta == NO_MORE_PROBES) break;
             prev_meta = &last->meta;
             last = &map->buckets[meta];
