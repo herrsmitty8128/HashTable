@@ -80,6 +80,7 @@ element_t *map_get(map_t *map, const uint64_t key) {
     uint64_t meta = bucket->meta;
 
     if(meta & HEAD_BIT_MASK){
+        //meta ^= HEAD_BIT_MASK;
         for(;;){
             if(bucket->key == key) return &bucket->value;
             meta &= PROBE_BITS_MASK;
@@ -149,7 +150,7 @@ static inline bool map_emplace(map_t *map, uint64_t key, element_t value){
         return true;
     }
     else if(meta & HEAD_BIT_MASK){
-        meta ^= HEAD_BIT_MASK; // faster than meta &= PROBE_BITS_MASK;
+        meta ^= HEAD_BIT_MASK;
         for(;;){
             if(bucket->key == key){
                 bucket->value = value;
