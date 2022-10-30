@@ -1,6 +1,10 @@
 
 #include "FlatChainedHashTable.h"
 
+#define MAX_COUNT     768614336404564650ul   // UINT64_MAX / sizeof(map_bucket_t)
+#define MAX_CAPACITY  2305843009213693952ul  // 2^61
+#define MIN_CAPACITY  8ul
+
 /*
  * The correct multiplier constant for the hash function is based on the golden ratio.
  * The golden ratio can be calculated with python3 using the following statements:
@@ -25,13 +29,15 @@ static inline bool hashtable_should_shrink(const hashtable_t *hashtable){
     return hashtable->count <= (hashtable->capacity >> 2) + (hashtable->capacity >> 3);
 }
 
-static inline uint64_t hashtable_max_capacity(){
+/*
+static inline uint64_t MAX_CAPACITY{
     return 1ul << 59;
 }
 
-static inline uint64_t hashtable_min_capacity(){
+static inline uint64_t MIN_CAPACITY{
     return 8;
 }
+*/
 
 float hashtable_load_factor(const hashtable_t *hashtable){
     return hashtable->capacity == 0 ? 0.0f : (float)hashtable->count / (float)hashtable->capacity;
@@ -42,8 +48,8 @@ static inline uint64_t hashtable_total_size(const uint64_t capacity, const uint6
 }
 
 hashtable_t *hashtable_create(uint64_t initial_capacity, const uint64_t bucket_size){
-    if(initial_capacity < hashtable_min_capacity()) initial_capacity = hashtable_min_capacity();
-    if(initial_capacity > hashtable_max_capacity()) initial_capacity = hashtable_max_capacity();
+    if(initial_capacity < MIN_CAPACITY) initial_capacity = MIN_CAPACITY;
+    if(initial_capacity > MAX_CAPACITY) initial_capacity = MAX_CAPACITY;
     uint64_t bits = (uint64_t)ceil(log2(initial_capacity));
     initial_capacity = 1ul << bits;
     hashtable_t *table = (hashtable_t*)malloc(hashtable_total_size(initial_capacity, bucket_size));
@@ -93,9 +99,7 @@ element_t *map_get(map_t *map, const uint64_t key) {
 
 static inline bool emplace_empty(map_t *map, const uint64_t h, uint64_t *prev_meta, const uint64_t key, const element_t value){
     
-    uint64_t max_probes = map->hashtable.capacity > NO_MORE_PROBES ? NO_MORE_PROBES : map->hashtable.capacity;
-
-    for(uint64_t n = 1, cum = 1; n < max_probes; n++, cum += n){
+    for(uint64_t n = 1, cum = 1; n < map->hashtable.capacity; n++, cum += n){
         
         uint64_t i = (h + cum) & map->hashtable.mask;
         map_bucket_t *bucket = &map->buckets[i];
@@ -135,8 +139,40 @@ static void swap(uint64_t *key, element_t *value, map_bucket_t *bucket){
     bucket->value = temp;
 }
 
-static bool map_emplace(map_t *map, uint64_t key, element_t value){
+static bool map_resize(map_t **fmap, bool action){
+    map_t *map = *fmap;
+    uint64_t new_capacity;
+    if(action){
+        if(map->hashtable.capacity >= MAX_CAPACITY) return false;
+        new_capacity = map->hashtable.capacity * 2;
+    }
+    else{
+        if(map->hashtable.capacity <= MIN_CAPACITY) return false;
+        new_capacity = map->hashtable.capacity / 2;
+    }
+    map = map_create(new_capacity);
+    if(!map) return false;
+    for(uint64_t i = 0; i < (*fmap)->hashtable.capacity; i++){
+        map_bucket_t *b = &(*fmap)->buckets[i];
+        if((b->meta & EMPTY_BIT_MASK) == 0ul){
+            if(!map_put(&map, b->key, b->value)){
+                map_destroy(&map);
+                return false;
+            }
+        }
+    }
+    map_destroy(fmap);
+    *fmap = map;
+    return true;
+}
 
+bool map_put(map_t **fmap, uint64_t key, element_t value){
+
+    if(hashtable_should_grow((hashtable_t*)*fmap)){
+        if(!map_resize(fmap, true)) return false;
+    }
+
+    map_t *map = *fmap;
     uint64_t h = hash((hashtable_t*)map, key);
     map_bucket_t *bucket = &map->buckets[h];
     uint64_t meta = bucket->meta;
@@ -176,40 +212,6 @@ static bool map_emplace(map_t *map, uint64_t key, element_t value){
     }
 
     return emplace_empty(map, h, &bucket->meta, key, value);
-}
-
-static bool map_resize(map_t **fmap, bool action){
-    map_t *map = *fmap;
-    uint64_t new_capacity;
-    if(action){
-        if(map->hashtable.capacity >= hashtable_max_capacity()) return false;
-        new_capacity = map->hashtable.capacity * 2;
-    }
-    else{
-        if(map->hashtable.capacity <= hashtable_min_capacity()) return false;
-        new_capacity = map->hashtable.capacity / 2;
-    }
-    map = map_create(new_capacity);
-    if(!map) return false;
-    for(uint64_t i = 0; i < (*fmap)->hashtable.capacity; i++){
-        map_bucket_t *b = &(*fmap)->buckets[i];
-        if((b->meta & EMPTY_BIT_MASK) == 0ul){
-            if(!map_emplace(map, b->key, b->value)){
-                map_destroy(&map);
-                return false;
-            }
-        }
-    }
-    map_destroy(fmap);
-    *fmap = map;
-    return true;
-}
-
-bool map_put(map_t **fmap, uint64_t key, element_t value){
-    if(hashtable_should_grow((hashtable_t*)*fmap)){
-        map_resize(fmap, true);
-    }
-    return map_emplace(*fmap, key, value);
 }
 
 void map_del(map_t **fmap, uint64_t key) {

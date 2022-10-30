@@ -7,7 +7,6 @@ uint64_t myarray[MAX_COUNT];
 
 
 
-
 static void map_insert(benchmark::State& state) {
     size_t range = state.range(0);
     map_t *map = map_create(1);
@@ -24,6 +23,7 @@ static void map_insert(benchmark::State& state) {
 }
 
 BENCHMARK(map_insert)->Name("map_insert")->DenseRange(10000, MAX_COUNT, 25000)->Unit(benchmark::kNanosecond);
+
 
 
 static void map_lookup(benchmark::State& state) {
