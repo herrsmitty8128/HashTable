@@ -1,9 +1,13 @@
 
 #include "FlatChainedHashTable.h"
 
-#define MAX_COUNT     768614336404564650ul   // UINT64_MAX / sizeof(map_bucket_t)
-#define MAX_CAPACITY  2305843009213693952ul  // 2^61
-#define MIN_CAPACITY  8ul
+#define LIST_HEAD        13835058055282163711ul
+#define HEAD_BIT_MASK    9223372036854775808ul
+#define EMPTY_BIT_MASK   4611686018427387904ul
+#define PROBE_BITS_MASK  4611686018427387903ul
+#define NO_MORE_PROBES   4611686018427387903ul
+#define MAX_CAPACITY     576460752303423488ul  // 2^59
+#define MIN_CAPACITY     8ul
 
 /*
  * The correct multiplier constant for the hash function is based on the golden ratio.
@@ -28,16 +32,6 @@ static inline bool hashtable_should_grow(const hashtable_t *hashtable){
 static inline bool hashtable_should_shrink(const hashtable_t *hashtable){
     return hashtable->count <= (hashtable->capacity >> 2) + (hashtable->capacity >> 3);
 }
-
-/*
-static inline uint64_t MAX_CAPACITY{
-    return 1ul << 59;
-}
-
-static inline uint64_t MIN_CAPACITY{
-    return 8;
-}
-*/
 
 float hashtable_load_factor(const hashtable_t *hashtable){
     return hashtable->capacity == 0 ? 0.0f : (float)hashtable->count / (float)hashtable->capacity;
@@ -241,29 +235,4 @@ void map_del(map_t **fmap, uint64_t key) {
                 map_resize(fmap, false);
         }
     }
-}
-
-/*******************************************************************************************
- *******************************************************************************************
- *                                        SET
- *******************************************************************************************
- *******************************************************************************************/
-
-
-bool set_has(set_t *set, const uint64_t key) {
-    
-    uint64_t h = hash((hashtable_t*)set, key);
-    set_bucket_t *bucket = &set->buckets[h];
-    uint64_t meta = bucket->meta;
-
-    if(meta & HEAD_BIT_MASK){
-        for(;;){
-            if(bucket->key == key) return true;
-            meta &= PROBE_BITS_MASK;
-            if(meta == NO_MORE_PROBES) break;
-            bucket = &set->buckets[meta];
-            meta = bucket->meta;
-        }
-    }
-    return false;
 }

@@ -12,12 +12,6 @@
 extern "C" {
 #endif
 
-#define LIST_HEAD          13835058055282163711ul
-#define HEAD_BIT_MASK      9223372036854775808ul
-#define EMPTY_BIT_MASK     4611686018427387904ul
-#define PROBE_BITS_MASK    4611686018427387903ul
-#define NO_MORE_PROBES     4611686018427387903ul
-
 typedef union {
     double   dbl;
     int64_t  i64;
@@ -62,18 +56,12 @@ element_t *map_get(map_t *map, const uint64_t key);
 bool map_put(map_t **map, uint64_t key, element_t value);
 void map_del(map_t **map, uint64_t key);
 
-bool set_has(set_t *set, const uint64_t key);
-bool set_put(set_t **set, const uint64_t key);
-bool set_del(set_t **set, const uint64_t key);
 
 #ifdef __cplusplus
 };
 #endif
 
-static inline set_t *set_create(uint64_t initial_capacity){return (set_t*)hashtable_create(initial_capacity, sizeof(set_bucket_t));}
 static inline void map_destroy(map_t **map){hashtable_destroy((hashtable_t**)map);}
-static inline void set_destroy(set_t **set){hashtable_destroy((hashtable_t**)set);}
 static inline float map_load_factor(const map_t *map){return hashtable_load_factor((hashtable_t*)map);}
-static inline float set_load_factor(const set_t *set){return hashtable_load_factor((hashtable_t*)set);}
 
 #endif
