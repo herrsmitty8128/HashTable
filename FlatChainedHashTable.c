@@ -91,35 +91,6 @@ element_t *map_get(map_t *map, const uint64_t key) {
     return NULL;
 }
 
-static inline bool emplace_empty(map_t *map, const uint64_t h, uint64_t *prev_meta, const uint64_t key, const element_t value){
-    
-    for(uint64_t n = 1, cum = 1; n < map->hashtable.capacity; n++, cum += n){
-        
-        uint64_t i = (h + cum) & map->hashtable.mask;
-        map_bucket_t *bucket = &map->buckets[i];
-        
-        if(bucket->meta & EMPTY_BIT_MASK){
-            bucket->meta = NO_MORE_PROBES;
-            bucket->key = key;
-            bucket->value = value;
-            *prev_meta = (*prev_meta & HEAD_BIT_MASK) | i;
-            map->hashtable.count++;
-            return true;
-        }
-    }
-    
-    return false;
-}
-
-static inline uint64_t find_prev_index(map_t *map, const uint64_t key, const uint64_t h){
-    uint64_t i = hash((hashtable_t*)map, key);
-    for(;;){
-        uint64_t next = map->buckets[i].meta & PROBE_BITS_MASK;
-        if(next == h) return i;
-        i = next;
-    }
-}
-
 static void swap(uint64_t *key, element_t *value, map_bucket_t *bucket){
 
     element_t temp;
@@ -167,7 +138,7 @@ bool map_put(map_t **fmap, uint64_t key, element_t value){
     }
 
     map_t *map = *fmap;
-    uint64_t h = hash((hashtable_t*)map, key);
+    uint64_t *p,n,c,i,h = hash((hashtable_t*)map, key);
     map_bucket_t *bucket = &map->buckets[h];
     uint64_t meta = bucket->meta;
 
@@ -195,7 +166,16 @@ bool map_put(map_t **fmap, uint64_t key, element_t value){
     else{
         bucket->meta = LIST_HEAD;
         swap(&key, &value, bucket);
-        h = find_prev_index(map, key, h);
+
+        // find the previous index that points to h
+        i = hash((hashtable_t*)map, key);
+        for(;;){
+            n = map->buckets[i].meta & PROBE_BITS_MASK;
+            if(n == h) break;
+            i = n;
+        }
+        h = i;
+
         bucket = &map->buckets[h];
         bucket->meta = (bucket->meta & HEAD_BIT_MASK) | meta;
         while(meta != NO_MORE_PROBES){
@@ -204,8 +184,23 @@ bool map_put(map_t **fmap, uint64_t key, element_t value){
             meta = bucket->meta;            
         }
     }
-
-    return emplace_empty(map, h, &bucket->meta, key, value);
+    
+    // Append the key-value pair to the end of the list by
+    // locating the next emtpy bucket using a simple quadratic search.
+    for(p = &bucket->meta, n = 1, c = 1; n < map->hashtable.capacity; n++, c+=n){
+        i = (h + c) & map->hashtable.mask;
+        bucket = &map->buckets[i];
+        if(bucket->meta & EMPTY_BIT_MASK){
+            bucket->meta = NO_MORE_PROBES;
+            bucket->key = key;
+            bucket->value = value;
+            *p = (*p & HEAD_BIT_MASK) | i;
+            map->hashtable.count++;
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 void map_del(map_t **fmap, uint64_t key) {
