@@ -92,13 +92,10 @@ element_t *map_get(map_t *map, const uint64_t key) {
 }
 
 static void swap(uint64_t *key, element_t *value, map_bucket_t *bucket){
-
     element_t temp;
-    
     temp.u64 = *key;
     *key = bucket->key;
     bucket->key = temp.u64;
-
     temp = *value;
     *value = bucket->value;
     bucket->value = temp;
@@ -135,6 +132,7 @@ bool map_put(map_t **fmap, uint64_t key, element_t value){
 
     if(hashtable_should_grow((hashtable_t*)*fmap)){
         if(!map_resize(fmap, true)) return false;
+        //map = *fmap;
     }
 
     map_t *map = *fmap;
