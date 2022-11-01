@@ -186,7 +186,7 @@ bool map_put(map_t **fmap, uint64_t key, element_t value){
     }
     
     // Append the key-value pair to the end of the list by
-    // locating the next emtpy bucket using a simple quadratic search.
+    // locating the next emtpy bucket using a quadratic search.
     for(p = &bucket->meta, n = 1, c = 1; n < map->hashtable.capacity; n++, c+=n){
         i = (h + c) & map->hashtable.mask;
         bucket = &map->buckets[i];
