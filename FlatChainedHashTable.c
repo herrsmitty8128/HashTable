@@ -1,6 +1,5 @@
 
 #include "FlatChainedHashTable.h"
-#include <stdio.h>
 
 #define HEAD_BIT_MASK    9223372036854775808ul
 #define EMPTY_BIT_MASK   4611686018427387904ul
