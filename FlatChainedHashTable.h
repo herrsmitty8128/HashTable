@@ -26,9 +26,9 @@ typedef struct {
 }map_bucket_t;
 
 typedef struct {
+    uint64_t count;
     uint64_t shift;
     uint64_t mask;
-    uint64_t count;
     uint64_t capacity;
 }hashtable_t;
 
