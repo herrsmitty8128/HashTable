@@ -225,17 +225,6 @@ static bool map_resize(map_t **fmap, bool action){
     return true;
 }
 
-/*
-static inline uint64_t find_empty_bucket(map_t *map, uint64_t i){
-    for(uint64_t n = 1; n < map->hashtable.capacity; n++){
-        i += n;
-        i &= map->hashtable.mask;
-        if(map->buckets[i].meta & EMPTY_BIT_MASK) break;
-    }
-    return i;
-}
-*/
-
 bool map_put(map_t **fmap, uint64_t key, element_t value){
 
     if(hashtable_should_grow((hashtable_t*)*fmap)){
@@ -246,72 +235,67 @@ bool map_put(map_t **fmap, uint64_t key, element_t value){
     map_t *map = *fmap;
     uint64_t h = hash((hashtable_t*)map, key);
     map_bucket_t *bucket = &map->buckets[h];
-    uint64_t n,e,i,meta = bucket->meta;
+    uint64_t i,n = bucket->meta;
 
-    if(meta & EMPTY_BIT_MASK){
+    if(n & EMPTY_BIT_MASK){
         bucket->meta = HEAD_BIT_MASK | h;
         bucket->key = key;
         bucket->value = value;
         map->hashtable.count++;
         return true;
     }
-
-    i = h;
     
-    if(meta & HEAD_BIT_MASK){
+    if(n & HEAD_BIT_MASK){
         
-        meta ^= HEAD_BIT_MASK;
-        
-        for(;;){
+        for(i = h, n ^= HEAD_BIT_MASK;;){
             if(bucket->key == key){
                 bucket->value = value;
                 return true;
             }
-            if(meta == h) break;
-            i = meta;
+            if(n == h) break;
+            i = n;
             bucket = &map->buckets[i];
-            meta = bucket->meta;
+            n = bucket->meta;
         }
 
-        for(n = 1, e = i; n < map->hashtable.capacity; n++){
-            e += n;
-            e &= map->hashtable.mask;
-            if(map->buckets[e].meta & EMPTY_BIT_MASK){
-                bucket->meta = (bucket->meta & HEAD_BIT_MASK) | e;
-                map->buckets[e] = (map_bucket_t){h,key,value};
+        for(n = 1; /*n < map->hashtable.capacity*/; n++){
+            i += n;
+            i &= map->hashtable.mask;
+            if(map->buckets[i].meta & EMPTY_BIT_MASK){
+                bucket->meta = (bucket->meta & HEAD_BIT_MASK) | i;
+                map->buckets[i] = (map_bucket_t){h,key,value};
                 map->hashtable.count++;
                 return true;
             }
         }
-
-        return false;
-    
     }
 
-    do{
-        e = meta; //i = meta;
-        bucket = &map->buckets[e]; //bucket = &map->buckets[i];
-        meta = bucket->meta & PROBE_BITS_MASK;
-    }while(meta != h);
+    else{
 
-    //for(n = 1, e = i; n < map->hashtable.capacity; n++){
-    for(n = 1; n < map->hashtable.capacity; n++){
-        e += n;
-        e &= map->hashtable.mask;
-        if(map->buckets[e].meta & EMPTY_BIT_MASK){
-            
-            // move h to the empty bucket
-            map->buckets[e].meta = map->buckets[h].meta;
-            map->buckets[e].key = map->buckets[h].key;
-            map->buckets[e].value = map->buckets[h].value;
-            
-            // point the current bucket to the empty bucket to remove h
-            bucket->meta = (bucket->meta & HEAD_BIT_MASK) | e;
-            
-            // h is now ready to receive the original key-value pair
-            map->buckets[h] = (map_bucket_t){(HEAD_BIT_MASK | h),key,value};
-            map->hashtable.count++;
-            return true;
+        do{
+            i = n;
+            bucket = &map->buckets[i];
+            n = bucket->meta & PROBE_BITS_MASK;
+        }while(n != h);
+
+        for(n = 1; /*n < map->hashtable.capacity*/; n++){
+            i += n;
+            i &= map->hashtable.mask;
+            if(map->buckets[i].meta & EMPTY_BIT_MASK){
+                
+                // move h to the empty bucket
+                map->buckets[i].meta = map->buckets[h].meta;
+                map->buckets[i].key = map->buckets[h].key;
+                map->buckets[i].value = map->buckets[h].value;
+                
+                // point the current bucket to the empty bucket to remove h
+                bucket->meta = (bucket->meta & HEAD_BIT_MASK) | i;
+                
+                // h is now ready to receive the original key-value pair
+                map->buckets[h] = (map_bucket_t){(HEAD_BIT_MASK | h),key,value};
+                map->hashtable.count++;
+                return true;
+            }
         }
     }
 
