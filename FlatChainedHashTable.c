@@ -39,35 +39,28 @@ static inline uint64_t hashtable_total_size(const uint64_t capacity, const uint6
     return (capacity * bucket_size) + sizeof(hashtable_t);
 }
 
-hashtable_t *hashtable_create(uint64_t initial_capacity, const uint64_t bucket_size){
+map_t *map_create(uint64_t initial_capacity){
     if(initial_capacity < MIN_CAPACITY) initial_capacity = MIN_CAPACITY;
     if(initial_capacity > MAX_CAPACITY) initial_capacity = MAX_CAPACITY;
     uint64_t bits = (uint64_t)ceil(log2(initial_capacity));
     initial_capacity = 1ul << bits;
-    hashtable_t *table = (hashtable_t*)malloc(hashtable_total_size(initial_capacity, bucket_size));
-    if(table){
-        table->shift = 64ul - bits;
-        table->count = 0ul;
-        table->capacity = initial_capacity;
-        table->mask = initial_capacity - 1ul;
-    }
-    return table;
-}
-
-map_t *map_create(uint64_t initial_capacity){
-    map_t *map = (map_t*)hashtable_create(initial_capacity, sizeof(map_bucket_t));
+    map_t *map = (map_t*)malloc(hashtable_total_size(initial_capacity, sizeof(map_bucket_t)));
     if(map){
-        for(uint64_t i = 0; i < map->hashtable.capacity; i++){
+        map->hashtable.shift = 64ul - bits;
+        map->hashtable.count = 0ul;
+        map->hashtable.capacity = initial_capacity;
+        map->hashtable.mask = initial_capacity - 1ul;
+        for(uint64_t i = 0; i < initial_capacity; i++){
             map->buckets[i].meta = EMPTY_BIT_MASK;
         }
     }
     return map;
 }
 
-void hashtable_destroy(hashtable_t **hashtable) {
-    if(hashtable && *hashtable){
-        free(*hashtable);
-        *hashtable = NULL;
+void map_destroy(map_t **map) {
+    if(map && *map){
+        free(*map);
+        *map = NULL;
     }
 }
 

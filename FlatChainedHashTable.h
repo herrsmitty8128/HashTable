@@ -48,10 +48,9 @@ typedef struct {
 }set_t;
 
 float hashtable_load_factor(const hashtable_t* hashtable);
-hashtable_t *hashtable_create(uint64_t initial_capacity, const uint64_t bucket_size);
-void hashtable_destroy(hashtable_t **hashtable);
 
 map_t *map_create(uint64_t initial_capacity);
+void map_destroy(map_t **map);
 element_t *map_get(map_t *map, const uint64_t key);
 bool map_put(map_t **map, uint64_t key, element_t value);
 void map_del(map_t **map, uint64_t key);
@@ -61,7 +60,6 @@ void map_del(map_t **map, uint64_t key);
 };
 #endif
 
-static inline void map_destroy(map_t **map){hashtable_destroy((hashtable_t**)map);}
 static inline float map_load_factor(const map_t *map){return hashtable_load_factor((hashtable_t*)map);}
 
 #endif
